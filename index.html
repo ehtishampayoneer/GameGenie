@@ -147,7 +147,7 @@ body{
 .thread::-webkit-scrollbar{width:8px}
 .thread::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
 
-.msg{max-width:88%;font-size:14.5px;line-height:1.55;animation:rise .35s ease both}
+.msg{width:fit-content;max-width:88%;font-size:14.5px;line-height:1.55;animation:rise .35s ease both}
 .msg .who{
   font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;
   color:var(--text-faint);margin-bottom:5px;font-family:'Space Grotesk',sans-serif;
@@ -155,7 +155,7 @@ body{
 .msg .bubble{
   padding:12px 14px;border-radius:var(--radius);
   background:var(--panel-2);border:1px solid var(--line-soft);
-  color:var(--text);white-space:pre-wrap;
+  color:var(--text);white-space:pre-wrap;overflow-wrap:anywhere;
 }
 .msg.genie{align-self:flex-start}
 .msg.genie .bubble{border-color:var(--line)}
@@ -339,20 +339,28 @@ async function sendMessage(){
       headers:{ 'Content-Type':'application/json' },
       body: JSON.stringify({ messages: history })
     });
-    const data = await res.json();
     hideTyping();
 
-    if(data.error === 'missing_key'){
-      addMessage('genie', "I'm not connected to my magic yet. Add your API key in Vercel's settings to wake me up — the steps are in the README.");
+    // read raw first — if the brain file didn't deploy, this won't be JSON
+    const raw = await res.text();
+    let data = {};
+    try { data = JSON.parse(raw); } catch(_){ data = { error:'not_json' }; }
+
+    if(data.error === 'not_json'){
+      addMessage('genie', "My brain sent something I couldn't read (status " + res.status + "). That usually means api/chat.js isn't deploying. Open " + location.origin + "/api/chat in your browser — you should see “Genie brain is awake.”");
+    } else if(!res.ok && !data.error){
+      addMessage('genie', "My brain didn't answer (error " + res.status + "). 404 means the api/chat.js file is in the wrong place; 500 means it crashed — re-check the README steps.");
+    } else if(data.error === 'missing_key'){
+      addMessage('genie', "I'm not connected to my magic yet. Make sure ANTHROPIC_API_KEY is set in Vercel, then redeploy.");
     } else if(data.error){
-      addMessage('genie', "Something blocked my magic that time. Give it another try in a moment.");
+      addMessage('genie', "Something blocked my magic: " + (data.detail || data.error) + ".");
     } else {
       addMessage('genie', data.text);
       history.push({ role:'assistant', content:data.text });
     }
   }catch(err){
     hideTyping();
-    addMessage('genie', "I couldn't reach my magic just now. Check your connection and try again.");
+    addMessage('genie', "I couldn't reach my brain at all (" + (err.message || err) + "). Check your connection and try again.");
   }
 
   genie.classList.remove('thinking');
