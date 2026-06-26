@@ -1,21 +1,22 @@
 /* ============================================================
-   GameGenie — the Genie's brain  (Phase 1)
+   GameGenie — the Genie's brain  (Phase 1, robust build)
    ------------------------------------------------------------
-   This runs on Vercel's servers, NOT in the browser, so your
-   secret API key is never exposed to users.
+   Runs on Vercel's servers, NOT in the browser, so your secret
+   API key is never exposed.
 
-   The key lives in an Environment Variable called
-   ANTHROPIC_API_KEY  (you add it in Vercel — see README).
+   The key lives in an Environment Variable named
+   ANTHROPIC_API_KEY  (add it in Vercel → Settings → Environment
+   Variables, then redeploy).
+
+   TIP: open  your-site.vercel.app/api/chat  in a browser.
+   If the brain is deployed, you'll see "Genie brain is awake."
 
    To make the Genie cheaper later, change MODEL to
-   'claude-haiku-4-5-20251001'. For the smartest replies keep
-   Sonnet.
+   'claude-haiku-4-5-20251001'.
    ============================================================ */
 
 const MODEL = 'claude-sonnet-4-6';
 
-/* The Genie's personality. This is the single most important
-   thing to refine over time — it is who GameGenie *is*. */
 const GENIE = `
 You are the Genie — the friendly face of GameGenie, a tool that lets people
 with no coding skills create real games just by talking to you.
@@ -43,9 +44,6 @@ THE ONE RULE: only promise what can actually be built
 - If someone asks for something too big (e.g. "make Fortnite"), NEVER say a
   flat no, and NEVER pretend you can do it. Honour the feeling, gently name
   the limit, and immediately offer an exciting version you CAN make.
-  Example shape: "Oh, you want that shooter energy — love it. Fortnite itself
-  is a huge online world that took a studio years, so we won't clone that —
-  but here's what we can make right now that feels awesome: ..."
 - Multiplayer means small rooms of friends, not huge crowds. Voice/text chat
   is something you can add. Both come in a later version — if asked, say
   they're coming and steer to the single-player core for now.
@@ -61,19 +59,26 @@ RIGHT NOW (important)
 Keep replies fairly short and friendly — a few sentences, like a real chat.
 `.trim();
 
-export default async function handler(req, res){
-  if(req.method !== 'POST'){
-    return res.status(405).json({ error: 'method_not_allowed' });
+module.exports = async function handler(req, res) {
+  // friendly check: visiting the URL in a browser confirms the brain is live
+  if (req.method === 'GET') {
+    res.status(200).json({ status: 'Genie brain is awake. Send a POST to talk.' });
+    return;
+  }
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'method_not_allowed' });
+    return;
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if(!apiKey){
-    return res.status(200).json({ error: 'missing_key' });
+  if (!apiKey) {
+    res.status(200).json({ error: 'missing_key' });
+    return;
   }
 
-  try{
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const messages = (body && body.messages) || [];
+  try {
+    const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+    const messages = body.messages || [];
 
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -82,29 +87,27 @@ export default async function handler(req, res){
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01'
       },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 1024,
-        system: GENIE,
-        messages: messages
-      })
+      body: JSON.stringify({ model: MODEL, max_tokens: 1024, system: GENIE, messages: messages })
     });
 
     const data = await r.json();
 
-    if(data.error){
-      return res.status(200).json({ error: data.error.message || 'api_error' });
+    // surface the REAL reason so we're never guessing
+    if (!r.ok || data.error) {
+      const detail = (data.error && (data.error.message || data.error.type)) || ('HTTP ' + r.status);
+      res.status(200).json({ error: 'api_error', detail: detail });
+      return;
     }
 
     const text = (data.content || [])
-      .filter(b => b.type === 'text')
-      .map(b => b.text)
+      .filter(function (b) { return b.type === 'text'; })
+      .map(function (b) { return b.text; })
       .join('\n')
       .trim();
 
-    return res.status(200).json({ text });
+    res.status(200).json({ text: text });
 
-  }catch(err){
-    return res.status(200).json({ error: 'server_error' });
+  } catch (err) {
+    res.status(200).json({ error: 'server_error', detail: String((err && err.message) || err) });
   }
-}
+};
