@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GameGenie — make your wish come true</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   GameGenie — Phase 1
+   Black / grey / white workspace. The only thing that glows
+   is the Genie. Real game colour comes in later phases.
+   Sections:  1. tokens   2. shell   3. stage + genie
+              4. chat      5. responsive   6. motion
+   ============================================================ */
+
+/* 1. TOKENS ------------------------------------------------- */
+:root{
+  --bg:        #0e0e10;   /* deepest canvas            */
+  --panel:     #141417;   /* lifted panels             */
+  --panel-2:   #1a1a1f;   /* inset surfaces            */
+  --line:      #26262c;   /* hairline borders          */
+  --line-soft: #1f1f24;
+  --text:      #edeef0;   /* primary text              */
+  --text-dim:  #9a9aa3;   /* secondary text            */
+  --text-faint:#62626b;   /* captions / system         */
+  --genie:     #e8ecf4;   /* the one luminous colour    */
+  --genie-glow:#aeb9d6;
+  --radius:    14px;
+  --bar-h:     52px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Inter',system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+
+/* 2. SHELL (Windows-like slim title bar) --------------------- */
+.app{display:flex;flex-direction:column;height:100vh}
+
+.bar{
+  height:var(--bar-h);
+  flex:0 0 auto;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 18px;
+  background:var(--panel);
+  border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{
+  width:18px;height:18px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, #fff, var(--genie) 40%, #6f7896 100%);
+  box-shadow:0 0 10px 1px rgba(174,185,214,.6);
+}
+.brand-name{
+  font-family:'Space Grotesk',sans-serif;
+  font-weight:700;font-size:16px;letter-spacing:.2px;
+}
+.brand-name b{color:var(--text)}
+.brand-name span{color:var(--text-dim);font-weight:500}
+.tagline{
+  font-size:12px;color:var(--text-faint);
+  font-family:'Space Grotesk',sans-serif;letter-spacing:.3px;
+}
+
+/* main split */
+.split{flex:1 1 auto;display:flex;min-height:0}
+
+/* 3. STAGE + GENIE ------------------------------------------ */
+.stage{
+  flex:1 1 56%;
+  position:relative;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:
+    radial-gradient(120% 90% at 50% 38%, #17171c 0%, var(--bg) 70%);
+  border-right:1px solid var(--line);
+  overflow:hidden;
+}
+.stage-label{
+  position:absolute;top:16px;left:18px;
+  font-size:11px;letter-spacing:1.6px;text-transform:uppercase;
+  color:var(--text-faint);font-family:'Space Grotesk',sans-serif;
+}
+
+/* the living genie wisp — pure CSS, no images */
+.genie-wrap{
+  display:flex;flex-direction:column;align-items:center;gap:26px;
+  transform:translateY(-6px);
+}
+.genie{
+  position:relative;width:120px;height:120px;
+  animation:float 6s ease-in-out infinite;
+}
+.genie::before{ /* outer aura */
+  content:"";position:absolute;inset:-40px;border-radius:50%;
+  background:radial-gradient(circle, rgba(174,185,214,.22) 0%, rgba(174,185,214,0) 62%);
+  animation:breathe 4.5s ease-in-out infinite;
+}
+.genie-core{
+  position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle at 38% 32%, #ffffff 0%, var(--genie) 34%, #8089a6 70%, #4b5167 100%);
+  box-shadow:0 0 34px 6px rgba(174,185,214,.45), inset 0 0 22px rgba(255,255,255,.35);
+}
+.genie-ring{
+  position:absolute;inset:-14px;border-radius:50%;
+  border:1px solid rgba(174,185,214,.30);
+  animation:spin 18s linear infinite;
+}
+.genie-ring::after{
+  content:"";position:absolute;top:-3px;left:50%;width:5px;height:5px;
+  border-radius:50%;background:#fff;transform:translateX(-50%);
+  box-shadow:0 0 8px 2px rgba(255,255,255,.8);
+}
+/* thinking state — faster, brighter */
+.genie.thinking{animation-duration:2.6s}
+.genie.thinking .genie-core{animation:pulse 1s ease-in-out infinite}
+.genie.thinking .genie-ring{animation-duration:5s}
+
+.stage-hint{
+  text-align:center;color:var(--text-faint);
+  font-size:13.5px;line-height:1.5;max-width:280px;
+}
+.stage-hint b{color:var(--text-dim);font-weight:500}
+
+/* 4. CHAT --------------------------------------------------- */
+.chat{
+  flex:0 0 44%;max-width:560px;
+  display:flex;flex-direction:column;min-height:0;
+  background:var(--panel);
+}
+.chat-head{
+  padding:14px 18px;border-bottom:1px solid var(--line-soft);
+  font-size:12px;letter-spacing:1.6px;text-transform:uppercase;
+  color:var(--text-faint);font-family:'Space Grotesk',sans-serif;
+}
+.thread{
+  flex:1 1 auto;overflow-y:auto;padding:18px;
+  display:flex;flex-direction:column;gap:14px;
+}
+.thread::-webkit-scrollbar{width:8px}
+.thread::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+
+.msg{max-width:88%;font-size:14.5px;line-height:1.55;animation:rise .35s ease both}
+.msg .who{
+  font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;
+  color:var(--text-faint);margin-bottom:5px;font-family:'Space Grotesk',sans-serif;
+}
+.msg .bubble{
+  padding:12px 14px;border-radius:var(--radius);
+  background:var(--panel-2);border:1px solid var(--line-soft);
+  color:var(--text);white-space:pre-wrap;
+}
+.msg.genie{align-self:flex-start}
+.msg.genie .bubble{border-color:var(--line)}
+.msg.you{align-self:flex-end;text-align:right}
+.msg.you .bubble{background:#23232a;border-color:#2e2e36}
+
+/* typing dots */
+.typing .bubble{display:inline-flex;gap:5px;align-items:center}
+.typing .dot{width:6px;height:6px;border-radius:50%;background:var(--text-dim);
+  animation:blink 1.2s infinite}
+.typing .dot:nth-child(2){animation-delay:.2s}
+.typing .dot:nth-child(3){animation-delay:.4s}
+
+/* composer */
+.composer{
+  flex:0 0 auto;padding:14px;border-top:1px solid var(--line-soft);
+  display:flex;gap:10px;align-items:flex-end;
+}
+.composer textarea{
+  flex:1 1 auto;resize:none;max-height:130px;
+  background:var(--panel-2);border:1px solid var(--line);
+  border-radius:12px;color:var(--text);
+  font-family:inherit;font-size:14.5px;line-height:1.5;
+  padding:12px 14px;outline:none;
+}
+.composer textarea::placeholder{color:var(--text-faint)}
+.composer textarea:focus{border-color:#3a3a44}
+.send{
+  flex:0 0 auto;width:42px;height:42px;border-radius:12px;border:none;cursor:pointer;
+  background:radial-gradient(circle at 38% 32%, #fff, var(--genie) 45%, #767e98 100%);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 12px 1px rgba(174,185,214,.4);
+  transition:transform .12s ease,box-shadow .2s ease;
+}
+.send:hover{transform:translateY(-1px);box-shadow:0 0 16px 2px rgba(174,185,214,.55)}
+.send:active{transform:translateY(0)}
+.send:disabled{opacity:.45;cursor:default;box-shadow:none}
+.send svg{width:18px;height:18px;fill:#15151a}
+
+/* 5. RESPONSIVE (mobile: stage on top, chat below) ---------- */
+@media (max-width:820px){
+  .split{flex-direction:column}
+  .stage{flex:0 0 200px;border-right:none;border-bottom:1px solid var(--line)}
+  .genie{width:84px;height:84px}
+  .genie-wrap{gap:14px;transform:none}
+  .stage-hint{font-size:12px;max-width:230px}
+  .chat{flex:1 1 auto;max-width:none;width:100%}
+  .tagline{display:none}
+}
+
+/* 6. MOTION ------------------------------------------------- */
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+@keyframes breathe{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.08)}}
+@keyframes pulse{0%,100%{box-shadow:0 0 34px 6px rgba(174,185,214,.45), inset 0 0 22px rgba(255,255,255,.35)}
+  50%{box-shadow:0 0 48px 12px rgba(174,185,214,.7), inset 0 0 26px rgba(255,255,255,.5)}}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes blink{0%,60%,100%{opacity:.3}30%{opacity:1}}
+
+@media (prefers-reduced-motion:reduce){
+  .genie,.genie::before,.genie-ring,.genie-core,.msg{animation:none!important}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- slim title bar -->
+  <div class="bar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div class="brand-name"><b>Game</b><span>Genie</span></div>
+    </div>
+    <div class="tagline">make your wish come true</div>
+  </div>
+
+  <!-- talk | stage -->
+  <div class="split">
+
+    <!-- LEFT: conversation -->
+    <section class="chat">
+      <div class="chat-head">Talk</div>
+      <div class="thread" id="thread"></div>
+      <div class="composer">
+        <textarea id="input" rows="1" placeholder="Type your wish…"></textarea>
+        <button class="send" id="send" aria-label="Send">
+          <svg viewBox="0 0 24 24"><path d="M3 11.5 21 3l-8.5 18-2.2-7.3z"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- RIGHT: the stage -->
+    <section class="stage">
+      <div class="stage-label">The Stage</div>
+      <div class="genie-wrap">
+        <div class="genie" id="genie">
+          <div class="genie-ring"></div>
+          <div class="genie-core"></div>
+        </div>
+        <div class="stage-hint">Your game will appear here.<br><b>Tell the Genie what you want to make.</b></div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   GameGenie front-end logic (Phase 1)
+   - keeps the running conversation
+   - sends it to /api/chat (which talks to the AI brain)
+   - drives the Genie's idle / thinking states
+   ============================================================ */
+
+const thread = document.getElementById('thread');
+const input  = document.getElementById('input');
+const send   = document.getElementById('send');
+const genie  = document.getElementById('genie');
+
+// running conversation history sent to the brain each turn
+const history = [];
+
+// the Genie's opening line
+addMessage('genie',
+  "Hi — I'm the Genie. Tell me what you want to make. Any idea at all, big or small, and we'll bring it to life together. What's on your mind?");
+
+/* --- render a message into the thread --- */
+function addMessage(who, text){
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + who;
+  wrap.innerHTML =
+    '<div class="who">' + (who === 'genie' ? 'Genie' : 'You') + '</div>' +
+    '<div class="bubble"></div>';
+  wrap.querySelector('.bubble').textContent = text;
+  thread.appendChild(wrap);
+  thread.scrollTop = thread.scrollHeight;
+  return wrap;
+}
+
+/* --- typing indicator --- */
+function showTyping(){
+  const t = document.createElement('div');
+  t.className = 'msg genie typing';
+  t.id = 'typing';
+  t.innerHTML = '<div class="who">Genie</div><div class="bubble">' +
+    '<span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
+  thread.appendChild(t);
+  thread.scrollTop = thread.scrollHeight;
+}
+function hideTyping(){ const t = document.getElementById('typing'); if(t) t.remove(); }
+
+/* --- auto-grow the textarea --- */
+input.addEventListener('input', () => {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 130) + 'px';
+});
+
+/* --- send on Enter (Shift+Enter = newline) --- */
+input.addEventListener('keydown', e => {
+  if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }
+});
+send.addEventListener('click', sendMessage);
+
+/* --- the main turn --- */
+async function sendMessage(){
+  const text = input.value.trim();
+  if(!text) return;
+
+  addMessage('you', text);
+  history.push({ role:'user', content:text });
+  input.value = '';
+  input.style.height = 'auto';
+
+  send.disabled = true;
+  genie.classList.add('thinking');
+  showTyping();
+
+  try{
+    const res = await fetch('/api/chat', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ messages: history })
+    });
+    const data = await res.json();
+    hideTyping();
+
+    if(data.error === 'missing_key'){
+      addMessage('genie', "I'm not connected to my magic yet. Add your API key in Vercel's settings to wake me up — the steps are in the README.");
+    } else if(data.error){
+      addMessage('genie', "Something blocked my magic that time. Give it another try in a moment.");
+    } else {
+      addMessage('genie', data.text);
+      history.push({ role:'assistant', content:data.text });
+    }
+  }catch(err){
+    hideTyping();
+    addMessage('genie', "I couldn't reach my magic just now. Check your connection and try again.");
+  }
+
+  genie.classList.remove('thinking');
+  send.disabled = false;
+  input.focus();
+}
+</script>
+</body>
+</html>
