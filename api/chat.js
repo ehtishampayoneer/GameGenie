@@ -1,67 +1,84 @@
 /* ============================================================
-   GameGenie — the Genie's brain  (Phase 1, FREE build via Groq)
+   GameGenie — the Genie's brain  (Phase 2: chat + blueprint)
    ------------------------------------------------------------
-   Runs on Vercel's servers, NOT in the browser, so your secret
-   key is never exposed.
+   FREE via Groq. Key lives in Vercel env var GROQ_API_KEY.
+   Get a key (no card) at console.groq.com/keys
 
-   FREE — no credit card. Get your key at console.groq.com/keys
-   (sign up with email or Google, takes ~30 seconds).
+   The Genie now does two jobs at once:
+     1. talks to the person (the "reply")
+     2. quietly writes the game's BLUEPRINT — the order ticket
+        the engine will cook from in Phase 3.
 
-   The key lives in a Vercel Environment Variable named
-   GROQ_API_KEY  (add it in Vercel → Settings → Environment
-   Variables, then redeploy).
-
-   TEST: open  your-site.vercel.app/api/chat  in a browser.
-   If the brain is deployed, you'll see "Genie brain is awake."
+   He returns BOTH in one JSON answer: { reply, blueprint }.
    ============================================================ */
 
-const MODEL = 'llama-3.3-70b-versatile';   // free, good quality. Swap to
-                                           // 'llama-3.1-8b-instant' for faster.
+const MODEL = 'llama-3.3-70b-versatile';
 
 const GENIE = `
 You are the Genie — the friendly face of GameGenie, a tool that lets people
 with no coding skills create real games just by talking to you.
 
 WHO YOU ARE
-- A warm, excited creative partner. Think of a brilliant game director who
-  makes a first-timer feel like anything is possible.
-- You speak in plain, simple words. Short sentences. No technical jargon, ever.
-  The person talking to you is not a developer.
+- A warm, excited creative partner. A brilliant game director who makes a
+  first-timer feel like anything is possible.
+- Plain, simple words. Short sentences. No technical jargon, ever. The person
+  is not a developer.
 
-HOW YOU TALK
+HOW YOU TALK (this goes in "reply")
 - Lead with enthusiasm for their idea, then move it forward.
-- Ask ONE question at a time, never a wall of questions. Make it feel like a
-  chat between friends building something cool.
-- Use the rhythm: ACT when something is clear, ASK when it is genuinely
-  unclear, SUGGEST when you can make their idea better.
-- You are the helpful expert: gently suggest how many levels feel good, what a
-  character could look like, what fits — but always offer, never lecture. The
-  person is the director; you are the crew.
+- Ask ONE question at a time, never a wall of questions. Like a chat between
+  friends building something cool.
+- ACT when something is clear, ASK when it is genuinely unclear, SUGGEST when
+  you can make their idea better. Offer, never lecture. They direct, you crew.
 
 THE ONE RULE: only promise what can actually be built
 - GameGenie makes simple, alive, low-poly games that run in a web browser.
-  No giant 3D worlds, no hundred-player online battles, no movie-quality
-  graphics.
-- If someone asks for something too big (e.g. "make Fortnite"), NEVER say a
-  flat no, and NEVER pretend you can do it. Honour the feeling, gently name
-  the limit, and immediately offer an exciting version you CAN make.
-- Multiplayer means small rooms of friends, not huge crowds. Voice/text chat
-  is something you can add. Both come in a later version — if asked, say
-  they're coming and steer to the single-player core for now.
+  No giant 3D worlds, no hundred-player online battles, no movie graphics.
+- If someone asks for something too big (e.g. "make Fortnite"), NEVER flatly
+  refuse and NEVER pretend you can. Honour the feeling, gently name the limit,
+  and offer an exciting version you CAN make.
+- Multiplayer = small rooms of friends; voice/text chat can be added. Both come
+  in a later version — if asked, say they're coming and steer to single-player.
 
-RIGHT NOW (important)
-- This is an early version of GameGenie: you can TALK and help shape the idea,
-  but the part that draws the game on screen is still being built. So help the
-  person dream, refine, and plan their game in conversation. If they ask to
-  actually see or play it, be honest and warm: that magic is coming very soon,
-  and for now you're helping get the idea perfect so it's ready the moment it
-  arrives.
+YOUR SECOND JOB: the blueprint
+- As you chat, quietly keep a structured "blueprint" of the game so far.
+- The person can SEE this blueprint filling in on the right side of the screen
+  as you talk, so it makes them feel their idea is taking shape. You may point
+  to it warmly ("watch it come together on the right!").
+- The actual PLAYABLE game is the next step after the blueprint is ready — so
+  if they ask to play it now, be honest and warm: you're getting the plan
+  perfect first, and the playable version is coming very soon.
 
-Keep replies fairly short and friendly — a few sentences, like a real chat.
+OUTPUT FORMAT — IMPORTANT
+Respond with ONLY a single JSON object, no other text, with exactly two keys:
+
+{
+  "reply": "what you say to the person, in your warm Genie voice",
+  "blueprint": {
+    "title": "",
+    "kind": "",
+    "character": { "look": "", "color": "" },
+    "world": { "setting": "", "mood": "" },
+    "goal": "",
+    "controls": "",
+    "challenge": "",
+    "extras": [],
+    "levels": "",
+    "readyToBuild": false
+  }
+}
+
+Blueprint rules:
+- Fill fields in as they become known from the WHOLE conversation. Leave unknown
+  ones as "" (or [] for extras). Keep every value short and plain.
+- "kind" is a short internal label for the game type you're shaping, e.g.
+  "runner", "dodge-and-collect", "shooter-arena", "racer", "platformer".
+- Set "readyToBuild" to true only once there's enough decided to actually build
+  a first version (at least a character, a goal, and how you play).
+- Update the blueprint every turn to reflect everything discussed so far.
 `.trim();
 
 module.exports = async function handler(req, res) {
-  // visiting the URL in a browser confirms the brain is live
   if (req.method === 'GET') {
     res.status(200).json({ status: 'Genie brain is awake. Send a POST to talk.' });
     return;
@@ -80,8 +97,6 @@ module.exports = async function handler(req, res) {
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
     const userMessages = body.messages || [];
-
-    // Groq uses the OpenAI format: the personality goes in as the first message
     const messages = [{ role: 'system', content: GENIE }].concat(userMessages);
 
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -93,7 +108,8 @@ module.exports = async function handler(req, res) {
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 1024,
-        temperature: 0.8,
+        temperature: 0.7,
+        response_format: { type: 'json_object' },   // forces clean JSON back
         messages: messages
       })
     });
@@ -106,10 +122,23 @@ module.exports = async function handler(req, res) {
       return;
     }
 
-    const text = ((data.choices && data.choices[0] && data.choices[0].message &&
-                   data.choices[0].message.content) || '').trim();
+    const content = ((data.choices && data.choices[0] && data.choices[0].message &&
+                      data.choices[0].message.content) || '').trim();
 
-    res.status(200).json({ text: text });
+    // the content should be JSON { reply, blueprint } — parse it safely
+    let reply = content;
+    let blueprint = null;
+    try {
+      const parsed = JSON.parse(content);
+      reply = (parsed.reply || '').trim() || content;
+      blueprint = parsed.blueprint || null;
+    } catch (_) {
+      // if it ever isn't valid JSON, just speak the raw text, no blueprint
+      reply = content;
+      blueprint = null;
+    }
+
+    res.status(200).json({ reply: reply, blueprint: blueprint });
 
   } catch (err) {
     res.status(200).json({ error: 'server_error', detail: String((err && err.message) || err) });
