@@ -142,24 +142,25 @@ body{
 }
 .thread{
   flex:1 1 auto;overflow-y:auto;padding:18px;
-  display:flex;flex-direction:column;gap:14px;
 }
 .thread::-webkit-scrollbar{width:8px}
 .thread::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
 
-.msg{max-width:80%;display:flex;flex-direction:column;gap:4px;font-size:14.5px;line-height:1.55;animation:rise .35s ease both}
+.msg{margin-bottom:14px;font-size:14.5px;line-height:1.55;animation:rise .35s ease both}
+.msg.genie{text-align:left}
+.msg.you{text-align:right}
 .msg .who{
+  display:block;margin-bottom:5px;
   font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;
   color:var(--text-faint);font-family:'Space Grotesk',sans-serif;
 }
 .msg .bubble{
+  display:inline-block;max-width:82%;text-align:left;
   padding:12px 14px;border-radius:var(--radius);
   background:var(--panel-2);border:1px solid var(--line-soft);
   color:var(--text);white-space:pre-wrap;overflow-wrap:anywhere;
 }
-.msg.genie{align-self:flex-start;align-items:flex-start}
 .msg.genie .bubble{border-color:var(--line)}
-.msg.you{align-self:flex-end;align-items:flex-end}
 .msg.you .bubble{background:#23232a;border-color:#2e2e36}
 
 /* typing dots */
