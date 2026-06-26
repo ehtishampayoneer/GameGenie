@@ -1,21 +1,22 @@
 /* ============================================================
-   GameGenie — the Genie's brain  (Phase 1, robust build)
+   GameGenie — the Genie's brain  (Phase 1, FREE build via Groq)
    ------------------------------------------------------------
    Runs on Vercel's servers, NOT in the browser, so your secret
-   API key is never exposed.
+   key is never exposed.
 
-   The key lives in an Environment Variable named
-   ANTHROPIC_API_KEY  (add it in Vercel → Settings → Environment
+   FREE — no credit card. Get your key at console.groq.com/keys
+   (sign up with email or Google, takes ~30 seconds).
+
+   The key lives in a Vercel Environment Variable named
+   GROQ_API_KEY  (add it in Vercel → Settings → Environment
    Variables, then redeploy).
 
-   TIP: open  your-site.vercel.app/api/chat  in a browser.
+   TEST: open  your-site.vercel.app/api/chat  in a browser.
    If the brain is deployed, you'll see "Genie brain is awake."
-
-   To make the Genie cheaper later, change MODEL to
-   'claude-haiku-4-5-20251001'.
    ============================================================ */
 
-const MODEL = 'claude-sonnet-4-6';
+const MODEL = 'llama-3.3-70b-versatile';   // free, good quality. Swap to
+                                           // 'llama-3.1-8b-instant' for faster.
 
 const GENIE = `
 You are the Genie — the friendly face of GameGenie, a tool that lets people
@@ -60,7 +61,7 @@ Keep replies fairly short and friendly — a few sentences, like a real chat.
 `.trim();
 
 module.exports = async function handler(req, res) {
-  // friendly check: visiting the URL in a browser confirms the brain is live
+  // visiting the URL in a browser confirms the brain is live
   if (req.method === 'GET') {
     res.status(200).json({ status: 'Genie brain is awake. Send a POST to talk.' });
     return;
@@ -70,7 +71,7 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
     res.status(200).json({ error: 'missing_key' });
     return;
@@ -78,32 +79,35 @@ module.exports = async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-    const messages = body.messages || [];
+    const userMessages = body.messages || [];
 
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
+    // Groq uses the OpenAI format: the personality goes in as the first message
+    const messages = [{ role: 'system', content: GENIE }].concat(userMessages);
+
+    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
+        'authorization': 'Bearer ' + apiKey
       },
-      body: JSON.stringify({ model: MODEL, max_tokens: 1024, system: GENIE, messages: messages })
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 1024,
+        temperature: 0.8,
+        messages: messages
+      })
     });
 
     const data = await r.json();
 
-    // surface the REAL reason so we're never guessing
     if (!r.ok || data.error) {
       const detail = (data.error && (data.error.message || data.error.type)) || ('HTTP ' + r.status);
       res.status(200).json({ error: 'api_error', detail: detail });
       return;
     }
 
-    const text = (data.content || [])
-      .filter(function (b) { return b.type === 'text'; })
-      .map(function (b) { return b.text; })
-      .join('\n')
-      .trim();
+    const text = ((data.choices && data.choices[0] && data.choices[0].message &&
+                   data.choices[0].message.content) || '').trim();
 
     res.status(200).json({ text: text });
 
