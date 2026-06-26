@@ -57,6 +57,7 @@ Respond with ONLY a single JSON object, no other text, with exactly two keys:
   "blueprint": {
     "title": "",
     "kind": "",
+    "mode": "",
     "character": { "look": "", "color": "" },
     "world": { "setting": "", "mood": "" },
     "goal": "",
@@ -71,8 +72,12 @@ Respond with ONLY a single JSON object, no other text, with exactly two keys:
 Blueprint rules:
 - Fill fields in as they become known from the WHOLE conversation. Leave unknown
   ones as "" (or [] for extras). Keep every value short and plain.
-- "kind" is a short internal label for the game type you're shaping, e.g.
-  "runner", "dodge-and-collect", "shooter-arena", "racer", "platformer".
+- "kind" is a short internal label for the game type, e.g. "runner",
+  "dodge-and-collect", "racer", "platformer", "flying".
+- "mode" is HOW the game is played — it MUST be exactly one of: "runner"
+  (driving / racing / endless running, dodge side to side), "flyer" (flying /
+  space / planes, move freely up-down-left-right), or "jumper" (platformer,
+  run and jump over things). Pick the closest fit based on the idea.
 - Set "readyToBuild" to true only once there's enough decided to actually build
   a first version (at least a character, a goal, and how you play).
 - Update the blueprint every turn to reflect everything discussed so far.
