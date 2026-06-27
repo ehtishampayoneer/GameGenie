@@ -50,6 +50,14 @@
     return {dark:true, road:0x1a1d28, edge:0x49d6e8, accent:0x6fa8e0, bld1:0x1c1f2c, bld2:0x262a3c, top:0x1a2440, horizon:0x3a5478, sun:0xffe6c0, sunI:1.0, amb:0.6, exposure:1.0};
   }
 
+  function getEnv(t){ t=(t||'').toLowerCase(); var has=function(w){return t.indexOf(w)!==-1;};
+    if(has('forest')||has('jungle')||has('nature')||has('park')||has('woods')||has('grass')) return 'forest';
+    if(has('space')||has('galaxy')||has('star')||has('cosmic')||has('asteroid')||has('moon')) return 'space';
+    if(has('desert')||has('sand')||has('dune')||has('canyon')) return 'desert';
+    if(has('ice')||has('snow')||has('frozen')||has('arctic')||has('winter')) return 'ice';
+    if(has('lava')||has('fire')||has('volcano')||has('inferno')) return 'lava';
+    return 'city';
+  }
   function detectMode(bp){
     if(bp.mode){ var m=(''+bp.mode).toLowerCase();
       if(m.indexOf('fly')!==-1) return 'flyer';
@@ -86,6 +94,7 @@
     var theme=themeFromText(themeText);
     var color=colorFromText(ch.color||ch.look, theme.accent);
     var mode=detectMode(bp);
+    var env=getEnv(themeText);
     var finite=isFinite_(bp);
     var extrasStr=(bp.extras||[]).join(' ')+' '+(bp.challenge||'');
     var hasShield=/shield|invinci|protect|armor|armour/i.test(extrasStr);
@@ -133,13 +142,30 @@
     var edgeMat=new THREE.MeshStandardMaterial({color:theme.edge,emissive:theme.edge,emissiveIntensity:0.7,roughness:1});
     [-5.5,5.5].forEach(function(x){ var e=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.2,300),edgeMat); e.position.set(x,0.1,-130); scene.add(e); });
     var winTex=windowTexture(theme.accent); var buildings=[];
-    function makeBuilding(side){ var grp=new THREE.Group(); var h=5+Math.random()*24,w=2.4+Math.random()*3.4,dp=2.4+Math.random()*3.6;
-      var base=Math.random()<0.5?theme.bld1:theme.bld2;
-      var mat=new THREE.MeshStandardMaterial({color:base,roughness:0.9,metalness:0.05,emissive:theme.accent,emissiveMap:winTex,emissiveIntensity:theme.dark?0.9:0.25,flatShading:true});
-      var b=new THREE.Mesh(new THREE.BoxGeometry(w,h,dp),mat); b.position.y=h/2; b.castShadow=true; b.receiveShadow=true; grp.add(b);
-      grp.position.set(side*(7+Math.random()*9),0,0); grp.userData={side:side}; return grp; }
+    function sc(m){m.castShadow=true;return m;}
+    function makeScenery(side){
+      var grp=new THREE.Group();
+      if(env==='forest'){
+        var tr=sc(new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.55,3,6),new THREE.MeshStandardMaterial({color:0x6b4a2a,roughness:0.9,flatShading:true}))); tr.position.y=1.5; grp.add(tr);
+        var f1=sc(new THREE.Mesh(new THREE.ConeGeometry(2.2,4,7),new THREE.MeshStandardMaterial({color:0x3f9a4f,roughness:0.9,flatShading:true}))); f1.position.y=4.4; grp.add(f1);
+        var f2=sc(new THREE.Mesh(new THREE.ConeGeometry(1.6,3,7),new THREE.MeshStandardMaterial({color:0x55b863,roughness:0.9,flatShading:true}))); f2.position.y=6; grp.add(f2);
+      } else if(env==='space'){
+        var sz=0.9+Math.random()*2; var ast=sc(new THREE.Mesh(new THREE.IcosahedronGeometry(sz,0),new THREE.MeshStandardMaterial({color:0x6a6f82,roughness:0.95,flatShading:true}))); ast.position.y=2+Math.random()*8; grp.add(ast); grp.userData.spin=(Math.random()-0.5)*0.02;
+      } else if(env==='desert'){
+        var cb=sc(new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.6,3,7),new THREE.MeshStandardMaterial({color:0x4f8a4a,roughness:0.9,flatShading:true}))); cb.position.y=1.5; grp.add(cb);
+        var arm=sc(new THREE.Mesh(new THREE.CylinderGeometry(0.28,0.28,1.3,6),new THREE.MeshStandardMaterial({color:0x4f8a4a,roughness:0.9,flatShading:true}))); arm.position.set(0.6,2,0); arm.rotation.z=-0.5; grp.add(arm);
+      } else if(env==='ice'){
+        var sp=sc(new THREE.Mesh(new THREE.ConeGeometry(1.2,5+Math.random()*4,6),new THREE.MeshStandardMaterial({color:0xbfe0f0,roughness:0.4,metalness:0.1,emissive:0x8fc4e0,emissiveIntensity:0.15,flatShading:true}))); sp.position.y=3; grp.add(sp);
+      } else if(env==='lava'){
+        var pl=sc(new THREE.Mesh(new THREE.CylinderGeometry(1,1.7,4+Math.random()*5,6),new THREE.MeshStandardMaterial({color:0x2a1512,roughness:0.9,emissive:0xff5a2a,emissiveIntensity:0.3,flatShading:true}))); pl.position.y=3; grp.add(pl);
+      } else {
+        var h=5+Math.random()*24,w=2.4+Math.random()*3.4,dp=2.4+Math.random()*3.6; var base=Math.random()<0.5?theme.bld1:theme.bld2;
+        var b=sc(new THREE.Mesh(new THREE.BoxGeometry(w,h,dp),new THREE.MeshStandardMaterial({color:base,roughness:0.9,metalness:0.05,emissive:theme.accent,emissiveMap:winTex,emissiveIntensity:theme.dark?0.9:0.25,flatShading:true}))); b.position.y=h/2; b.receiveShadow=true; grp.add(b);
+      }
+      grp.position.set(side*(7+Math.random()*9),0,0); grp.userData.side=side; return grp;
+    }
     var SPAN=150,GAP=11;
-    for(var s=-1;s<=1;s+=2){ for(var bz=0;bz<SPAN/GAP;bz++){ var bld=makeBuilding(s); bld.position.z=-bz*GAP-Math.random()*5; scene.add(bld); buildings.push(bld); } }
+    for(var s=-1;s<=1;s+=2){ for(var bz=0;bz<SPAN/GAP;bz++){ var bld=makeScenery(s); bld.position.z=-bz*GAP-Math.random()*5; scene.add(bld); buildings.push(bld); } }
 
     function part(geo,mat){var m=new THREE.Mesh(geo,mat);m.castShadow=true;return m;}
     var hullMat=new THREE.MeshStandardMaterial({color:color,roughness:0.4,metalness:0.3,flatShading:true});
@@ -166,6 +192,25 @@
     var HOVER = mode==='jumper' ? 0 : 1.25;
     if(mode==='jumper') buildCharacter(); else buildCraft();
     player.position.set(0,HOVER,4); scene.add(player);
+
+    /* ---- rival racers + race gates (runner = a real race) ---- */
+    function buildRival(col){ var grp=new THREE.Group(); var m=new THREE.MeshStandardMaterial({color:col,roughness:0.4,metalness:0.3,flatShading:true});
+      var h=part(new THREE.BoxGeometry(1.1,0.3,1.8),m); h.position.y=0.2; grp.add(h);
+      var n=part(new THREE.ConeGeometry(0.5,0.9,4),m); n.rotation.x=-Math.PI/2; n.rotation.z=Math.PI/4; n.position.set(0,0.2,-1.15); grp.add(n);
+      var c=part(new THREE.BoxGeometry(0.55,0.3,0.65),glassMat); c.position.set(0,0.42,-0.05); grp.add(c);
+      [-1,1].forEach(function(sx){ var w=part(new THREE.BoxGeometry(0.8,0.06,0.6),m); w.position.set(sx*0.8,0.18,0.4); w.rotation.y=sx*0.3; grp.add(w);
+        var th=part(new THREE.CylinderGeometry(0.13,0.13,0.32,8),new THREE.MeshStandardMaterial({color:col,emissive:col,emissiveIntensity:0.9})); th.rotation.x=Math.PI/2; th.position.set(sx*0.8,0.18,0.85); grp.add(th); });
+      return grp; }
+    function makeGate(){ var grp=new THREE.Group(); var m=new THREE.MeshStandardMaterial({color:theme.accent,emissive:theme.accent,emissiveIntensity:0.6,roughness:1});
+      [-5.6,5.6].forEach(function(x){ var post=part(new THREE.BoxGeometry(0.4,7.5,0.4),m); post.position.set(x,3.7,0); grp.add(post); });
+      var beam=part(new THREE.BoxGeometry(11.8,0.45,0.45),m); beam.position.set(0,7.4,0); grp.add(beam); return grp; }
+    var rivals=[], gates=[];
+    if(mode==='runner'){
+      var RCOL=[0xe8484f,0x4fcf72,0xf2d24b,0xe05fc4,0xf2913d,0x49d6e8];
+      for(var ri=0;ri<5;ri++){ var rl=Math.floor(Math.random()*3); var rv=buildRival(RCOL[ri%RCOL.length]);
+        rv.position.set(LANE_X[rl],HOVER,-16-ri*13-Math.random()*8); rv.userData={laneT:rl,wt:60+Math.random()*200}; scene.add(rv); rivals.push(rv); }
+      for(var gi=0;gi<4;gi++){ var gt=makeGate(); gt.position.z=-32-gi*42; scene.add(gt); gates.push(gt); }
+    }
 
     /* ---- hazards + gems per mode ---- */
     var TC=[0xe8484f,0xf2913d,0xb0b6c4,0x4f8df2,0x9aa0ad];
@@ -260,7 +305,16 @@
         g.speed=Math.min(g.maxSpeed,g.speed+0.00018); var spd=g.speed*(g.boostT>0?1.8:1); g.distance+=spd;
         if(g.shieldT>0)g.shieldT--; if(g.boostT>0)g.boostT--; if(g.invuln>0)g.invuln--;
 
-        buildings.forEach(function(b){ b.position.z+=spd; if(b.position.z>18){ b.position.z-=SPAN; b.position.x=b.userData.side*(7+Math.random()*9); }});
+        buildings.forEach(function(b){ b.position.z+=spd; if(b.userData.spin&&b.children[0]) b.children[0].rotation.y+=b.userData.spin; if(b.position.z>18){ b.position.z-=SPAN; b.position.x=b.userData.side*(7+Math.random()*9); }});
+
+        // rival racers — you overtake them; they weave lanes
+        rivals.forEach(function(r){ r.position.z+=spd*0.55;
+          r.userData.wt--; if(r.userData.wt<=0){ r.userData.laneT=Math.floor(Math.random()*3); r.userData.wt=120+Math.random()*200; }
+          var rtx=LANE_X[r.userData.laneT]; r.position.x+=(rtx-r.position.x)*0.05; r.rotation.z=(rtx-r.position.x)*-0.3;
+          r.position.y=HOVER+Math.sin(clock*0.08+r.position.z)*0.05;
+          if(r.position.z>15){ r.position.z-=95-Math.random()*30; var nl=Math.floor(Math.random()*3); r.userData.laneT=nl; r.position.x=LANE_X[nl]; } });
+        // race gates scroll past
+        gates.forEach(function(gt){ gt.position.z+=spd; if(gt.position.z>14) gt.position.z-=168; });
 
         // flyer continuous keyboard
         if(mode==='flyer'){ if(keys['arrowleft']||keys['a'])g.fx-=0.13; if(keys['arrowright']||keys['d'])g.fx+=0.13;
